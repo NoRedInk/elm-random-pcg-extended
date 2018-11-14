@@ -1,3 +1,7 @@
+> ⚠️ This is a fork of https://github.com/zinggi/elm-random-pcg-extended ⚠️
+> We do not plan to continue general maintainance of the package and are
+> only publishing it for the purpose of finishing our Elm 0.19 upgrade.
+
 # Note
 **This is a fork, you probably want [mgold/elm-random-pcg](http://package.elm-lang.org/packages/mgold/elm-random-pcg/latest)**
 

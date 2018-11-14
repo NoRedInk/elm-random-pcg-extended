@@ -1,4 +1,12 @@
-module Random.Pcg.Extended exposing (Generator, Seed, bool, int, float, oneIn, sample, pair, list, maybe, choice, choices, frequency, map, map2, map3, map4, map5, andMap, filter, constant, independentSeed, andThen, minInt, maxInt, step, initialSeed, toJson, fromJson, config)
+module Random.Pcg.Extended exposing
+    ( config
+    , step, initialSeed
+    , Generator, bool, int, float, oneIn, sample
+    , pair, list, maybe, choice, choices, frequency
+    , constant, map, map2, map3, map4, map5, andMap, andThen, filter
+    , Seed, independentSeed, toJson, fromJson
+    , minInt, maxInt
+    )
 
 {-| This is an extended version of the Pcg random generator.
 It offers k dimensional equidistributed random numbers.
@@ -39,12 +47,13 @@ It has a larger space cost than the normal Pcg version, but it also offers a muc
 
 -}
 
-import Json.Decode
-import Json.Encode
 import Array exposing (Array)
 import Bitwise
-import Random.General as RNG exposing (Config(..))
 import Internal.Pcg
+import Json.Decode
+import Json.Encode
+import Random.General as RNG exposing (Config(..))
+
 
 
 {- NOTE: this implementation tries to follow the description in the Pcg paper
@@ -95,7 +104,7 @@ independentSeed =
                     int 0 0xFFFFFFFF
 
                 ( ( state, b, c ), Seed seed1 ) =
-                    step (map3 (,,) gen gen gen) seed0
+                    step (map3 (\x y z -> ( x, y, z )) gen gen gen) seed0
 
                 {--
                 Although it probably doesn't hold water theoretically, xor two
@@ -104,9 +113,9 @@ independentSeed =
                 Finally step it once before use.
                 --}
                 incr =
-                    (Bitwise.xor b c) |> Bitwise.or 1 |> Bitwise.shiftRightZfBy 0
+                    Bitwise.xor b c |> Bitwise.or 1 |> Bitwise.shiftRightZfBy 0
             in
-                ( Seed seed1, Seed { extension = seed1.extension, base = Internal.Pcg.next <| Internal.Pcg.Seed state incr } )
+            ( Seed seed1, Seed { extension = seed1.extension, base = Internal.Pcg.next <| Internal.Pcg.Seed state incr } )
 
 
 {-| The config for the PCG-extended variant
@@ -134,15 +143,16 @@ next (Seed s) =
         ((Internal.Pcg.Seed baseState _) as newBase) =
             Internal.Pcg.next s.base
     in
-        Seed
-            { base = newBase
-            , extension =
-                if baseState == 0 then
-                    -- only advance the extension if we cross the all zero state for the base generator
-                    incrementExtension s.extension
-                else
-                    s.extension
-            }
+    Seed
+        { base = newBase
+        , extension =
+            if baseState == 0 then
+                -- only advance the extension if we cross the all zero state for the base generator
+                incrementExtension s.extension
+
+            else
+                s.extension
+        }
 
 
 peel : Seed -> Int
@@ -158,8 +168,8 @@ peel (Seed s) =
         extension =
             Array.get randIndex s.extension |> Maybe.withDefault 0
     in
-        Bitwise.xor baseOut extension
-            |> Bitwise.shiftRightZfBy 0
+    Bitwise.xor baseOut extension
+        |> Bitwise.shiftRightZfBy 0
 
 
 incrementExtension : Array Int -> Array Int
@@ -179,10 +189,11 @@ incrementExtensionHelp index prev arr =
                         -- Or should it use a different increment for each element of the array?
                         elem + 1013904223 |> Bitwise.shiftRightZfBy 0
                 in
-                    incrementExtensionHelp (index + 1) newElem (Array.set index newElem arr)
+                incrementExtensionHelp (index + 1) newElem (Array.set index newElem arr)
 
             Nothing ->
                 arr
+
     else
         arr
 
@@ -296,13 +307,13 @@ choice =
 
 
 {-| -}
-choices : List (Generator a) -> Generator a
+choices : Generator a -> List (Generator a) -> Generator a
 choices =
     RNG.choices config
 
 
 {-| -}
-frequency : List ( Float, Generator a ) -> Generator a
+frequency : ( Float, Generator a ) -> List ( Float, Generator a ) -> Generator a
 frequency =
     RNG.frequency config
 
@@ -316,9 +327,9 @@ maybe =
 {-| -}
 toJson : Seed -> Json.Encode.Value
 toJson (Seed s) =
-    Json.Encode.list
+    Json.Encode.list identity
         [ Internal.Pcg.toJson s.base
-        , Json.Encode.list (Array.map Json.Encode.int s.extension |> Array.toList)
+        , Json.Encode.list Json.Encode.int (Array.toList s.extension)
         ]
 
 
